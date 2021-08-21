@@ -1,15 +1,14 @@
 {
-  "name": "@editorjs/simple-image",
-  "version": "1.4.1",
+  "name": "@editorjs/iframe",
+  "version": "1.0.0",
   "keywords": [
-    "codex editor",
+    "iframe",
     "tool",
-    "image",
     "server-less",
     "editor.js",
     "editorjs"
   ],
-  "description": "SimpleImage Tool for Editor.js",
+  "description": "Iframe Tool for Editor.js",
   "license": "MIT",
   "repository": "https://github.com/editor-js/simple-image",
   "main": "./dist/bundle.js",
@@ -19,7 +18,7 @@
   },
   "author": {
     "name": "CodeX",
-    "email": "team@codex.so"
+    "email": "hammaadhrasheedh@gmail.com"
   },
   "devDependencies": {
     "@babel/core": "^7.3.4",

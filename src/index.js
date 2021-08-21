@@ -10,7 +10,6 @@ require('./index.css').toString();
  * @typedef {object} SimpleImageData
  * @description Tool's input and output data format
  * @property {string} url — image URL
- * @property {string} caption — image caption
  * @property {boolean} withBorder - should image be rendered with border
  * @property {boolean} withBackground - should image be rendered with background
  * @property {boolean} stretched - should image be stretched to full width of container
@@ -56,8 +55,7 @@ class SimpleImage {
        * Tool's classes
        */
       wrapper: 'cdx-simple-image',
-      imageHolder: 'cdx-simple-image__picture',
-      caption: 'cdx-simple-image__caption',
+      holder: 'cdx-simple-image__picture',
     };
 
     /**
@@ -65,9 +63,8 @@ class SimpleImage {
      */
     this.nodes = {
       wrapper: null,
-      imageHolder: null,
+      holder: null,
       image: null,
-      caption: null,
     };
 
     /**
@@ -75,7 +72,7 @@ class SimpleImage {
      */
     this.data = {
       url: data.url || '',
-      caption: data.caption || '',
+      attributes: '',
       withBorder: data.withBorder !== undefined ? data.withBorder : false,
       withBackground: data.withBackground !== undefined ? data.withBackground : false,
       stretched: data.stretched !== undefined ? data.stretched : false,
@@ -104,46 +101,38 @@ class SimpleImage {
    * Creates a Block:
    *  1) Show preloader
    *  2) Start to load an image
-   *  3) After loading, append image and caption input
+   *  3) After loading, append iframe
    *
    * @public
    */
   render() {
     const wrapper = this._make('div', [this.CSS.baseClass, this.CSS.wrapper]),
         loader = this._make('div', this.CSS.loading),
-        imageHolder = this._make('div', this.CSS.imageHolder),
-        image = this._make('img'),
-        caption = this._make('div', [this.CSS.input, this.CSS.caption], {
-          contentEditable: !this.readOnly,
-          innerHTML: this.data.caption || '',
-        });
-
-    caption.dataset.placeholder = 'Enter a caption';
+        holder = this._make('div', this.CSS.holder),
+        iframe = this._make('iframe', '', this.data.attributes);
 
     wrapper.appendChild(loader);
 
-    if (this.data.url) {
-      image.src = this.data.url;
-    }
+    // if (this.data.url) {
+    //   image.src = this.data.url;
+    // }
 
-    image.onload = () => {
+    iframe.onload = () => {
       wrapper.classList.remove(this.CSS.loading);
-      imageHolder.appendChild(image);
-      wrapper.appendChild(imageHolder);
-      wrapper.appendChild(caption);
+      holder.appendChild(iframe);
+      wrapper.appendChild(holder);
       loader.remove();
       this._acceptTuneView();
     };
 
-    image.onerror = (e) => {
+    iframe.onerror = (e) => {
       // @todo use api.Notifies.show() to show error notification
-      console.log('Failed to load an image', e);
+      console.log('Failed to load iframe', e);
     };
 
-    this.nodes.imageHolder = imageHolder;
+    this.nodes.holder = holder;
     this.nodes.wrapper = wrapper;
-    this.nodes.image = image;
-    this.nodes.caption = caption;
+    this.nodes.iframe = iframe;
 
     return wrapper;
   }
@@ -154,16 +143,14 @@ class SimpleImage {
    * @returns {SimpleImageData}
    */
   save(blockContent) {
-    const image = blockContent.querySelector('img'),
-        caption = blockContent.querySelector('.' + this.CSS.input);
+    const iframe = blockContent.querySelector('iframe');
 
-    if (!image) {
+    if (!iframe) {
       return this.data;
     }
 
     return Object.assign(this.data, {
-      url: image.src,
-      caption: caption.innerHTML,
+      attributes: iframe.attributes,
     });
   }
 
@@ -172,13 +159,10 @@ class SimpleImage {
    */
   static get sanitize() {
     return {
-      url: {},
+      html: {},
       withBorder: {},
       withBackground: {},
       stretched: {},
-      caption: {
-        br: true,
-      },
     };
   }
 
@@ -207,7 +191,6 @@ class SimpleImage {
       reader.onload = (event) => {
         resolve({
           url: event.target.result,
-          caption: file.name,
         });
       };
     });
@@ -221,31 +204,11 @@ class SimpleImage {
   onPaste(event) {
     switch (event.type) {
       case 'tag': {
-        const img = event.detail.data;
+        const iframe = event.detail.data;
 
         this.data = {
-          url: img.src,
+          attributes: iframe.attributes,
         };
-        break;
-      }
-
-      case 'pattern': {
-        const { data: text } = event.detail;
-
-        this.data = {
-          url: text,
-        };
-        break;
-      }
-
-      case 'file': {
-        const { file } = event.detail;
-
-        this.onDropHandler(file)
-          .then(data => {
-            this.data = data;
-          });
-
         break;
       }
     }
@@ -268,12 +231,9 @@ class SimpleImage {
   set data(data) {
     this._data = Object.assign({}, this.data, data);
 
-    if (this.nodes.image) {
-      this.nodes.image.src = this.data.url;
-    }
-
-    if (this.nodes.caption) {
-      this.nodes.caption.innerHTML = this.data.caption;
+    if (this.nodes.iframe) {
+      newiframe = this._make('iframe', '', this.data.attributes);
+      this.nodes.iframe = newiframe;
     }
   }
 
@@ -285,13 +245,7 @@ class SimpleImage {
    */
   static get pasteConfig() {
     return {
-      patterns: {
-        image: /https?:\/\/\S+\.(gif|jpe?g|tiff|png|webp)$/i,
-      },
-      tags: [ 'img' ],
-      files: {
-        mimeTypes: [ 'image/*' ],
-      },
+      tags: [ 'iframe' ],
     };
   }
 
@@ -364,7 +318,7 @@ class SimpleImage {
    */
   _acceptTuneView() {
     this.settings.forEach(tune => {
-      this.nodes.imageHolder.classList.toggle(this.CSS.imageHolder + '--' + tune.name.replace(/([A-Z])/g, (g) => `-${g[0].toLowerCase()}`), !!this.data[tune.name]);
+      this.nodes.holder.classList.toggle(this.CSS.holder + '--' + tune.name.replace(/([A-Z])/g, (g) => `-${g[0].toLowerCase()}`), !!this.data[tune.name]);
 
       if (tune.name === 'stretched') {
         this.api.blocks.stretchBlock(this.blockIndex, !!this.data.stretched);
